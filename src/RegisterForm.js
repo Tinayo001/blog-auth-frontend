@@ -11,11 +11,43 @@ export default function RegisterForm() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-    // Here you’ll send the data to your backend API
-  };
+  const API_URL = process.env.REACT_APP_API_URL;
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (formData.password !== formData.confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: formData.email,
+        password: formData.password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `Error: ${response.status}`);
+    }
+
+    console.log("✅ Registration successful:", data);
+    alert("Registration successful!");
+  } catch (error) {
+    console.error("❌ Error registering:", error);
+    alert("Registration failed: " + error.message);
+  }
+};
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">

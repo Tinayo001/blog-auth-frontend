@@ -6,7 +6,7 @@ const Navbar = () => {
     <nav className="bg-white border-b border-black px-6 py-4 flex justify-between items-center">
       {/* Logo */}
       <div className="text-black font-bold text-2xl pl-6">
-        Tinayo
+        JustBlog
       </div>
 
       {/* Navigation Links */}
