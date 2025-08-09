@@ -17,9 +17,15 @@ const Navbar = () => {
         <button className="text-zinc-900 text-sm hover:underline">
           Membership
         </button>
-        <button className="text-zinc-900 text-sm hover:underline">
+
+        {/* Changed "Write" to Link to /login */}
+        <Link
+          to="/login"
+          className="text-zinc-900 text-sm hover:underline"
+        >
           Write
-        </button>
+        </Link>
+
         <Link
           to="/login"
           className="text-black font-medium hover:underline"
@@ -38,4 +44,6 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+
 

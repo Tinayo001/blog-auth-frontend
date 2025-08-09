@@ -13,7 +13,7 @@ export default function RegisterForm() {
 
   const API_URL = process.env.REACT_APP_API_URL;
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (formData.password !== formData.confirmPassword) {
@@ -21,8 +21,14 @@ const handleSubmit = async (e) => {
     return;
   }
 
+  console.log("Sending request to:", `${API_URL}/auth/register`);
+  console.log("Request body:", {
+    email: formData.email,
+    password: formData.password,
+  });
+
   try {
-    const response = await fetch(`${API_URL}/register`, {
+    const response = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -31,9 +37,12 @@ const handleSubmit = async (e) => {
         email: formData.email,
         password: formData.password,
       }),
+      credentials: "include" // Add this if using cookies/tokens
     });
 
     const data = await response.json();
+    console.log("Response status:", response.status);
+    console.log("Response data:", data);
 
     if (!response.ok) {
       throw new Error(data.message || `Error: ${response.status}`);
@@ -42,12 +51,10 @@ const handleSubmit = async (e) => {
     console.log("✅ Registration successful:", data);
     alert("Registration successful!");
   } catch (error) {
-    console.error("❌ Error registering:", error);
+    console.error("❌ Error registering:", error.message);
     alert("Registration failed: " + error.message);
   }
 };
-
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
