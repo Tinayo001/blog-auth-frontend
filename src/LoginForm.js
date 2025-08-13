@@ -1,5 +1,5 @@
-// src/components/LoginForm.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -7,17 +7,52 @@ const LoginForm = () => {
     password: "",
   });
 
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
-    setFormData({ 
-      ...formData, 
-      [e.target.name]: e.target.value 
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
     });
   };
 
-  const handleSubmit = (e) => {
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login data:", formData);
-    // TODO: Send to backend API
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+        credentials: "include", // if using cookies
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Error: ${response.status}`);
+      }
+
+      // Save token or login flag
+      localStorage.setItem("accessToken", data.accessToken);
+
+      console.log("✅ Login successful:", data);
+      alert("Login successful!");
+
+      // Redirect to dashboard
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Error logging in:", error.message);
+      alert("Login failed: " + error.message);
+    }
   };
 
   return (
@@ -71,3 +106,5 @@ const LoginForm = () => {
 };
 
 export default LoginForm;
+
+
