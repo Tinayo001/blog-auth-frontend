@@ -1,6 +1,7 @@
 import React from "react";
 import { FiSearch, FiMessageSquare, FiBell, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import UserDropdown from "./UserDropdown"; 
 
 const DashboardNavbar = () => {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ const DashboardNavbar = () => {
           <span className="text-sm font-medium">Write</span>
         </div>
         <FiBell size={20} className="cursor-pointer hover:text-blue-500 transition" />
-        <FiUser size={20} className="cursor-pointer hover:text-blue-500 transition" />
+        <UserDropdown />
       </div>
     </nav>
   );

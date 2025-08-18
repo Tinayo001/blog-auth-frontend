@@ -4,6 +4,7 @@ import DashboardNavbar from "./Navbar";
 import CreatePost from "./pages/createPost";
 import PostsList from "./pages/posts";
 import PostDetail from "./pages/PostDetail"; // matches the file name exactly
+import ProfilePage from "./pages/ProfilePage";
 
 const Home = () => {
   return (
@@ -18,6 +19,10 @@ const Home = () => {
           <Route path="create-post" element={<CreatePost />} />
           <Route path="posts" element={<PostsList />} />
           <Route path="posts/:id" element={<PostDetail />} /> {/* new route */}
+
+
+          {/* Profile Route */}
+          <Route path="profile" element={<ProfilePage />} />      
 
           {/* Optional: catch-all route to redirect to posts */}
           <Route path="*" element={<Navigate to="/" />} />

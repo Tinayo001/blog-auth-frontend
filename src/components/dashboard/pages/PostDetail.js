@@ -2,14 +2,16 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 
 const PostDetail = () => {
-  const { id } = useParams(); 
+  const { id } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [comments, setComments] = useState([]);
+  const panelRef = useRef(null); 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
-  const panelRef = useRef(null); // Ref for comments panel
 
+  // Fetch post data
   useEffect(() => {
     const fetchPost = async () => {
       try {
@@ -23,17 +25,31 @@ const PostDetail = () => {
         setLoading(false);
       }
     };
-
     fetchPost();
   }, [id, API_URL]);
 
-  // Click-away listener
+  // Fetch comments when sidebar opens
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!showComments) return;
+      try {
+        const res = await fetch(`${API_URL}/posts/${id}/comments`);
+        if (!res.ok) throw new Error("Failed to fetch comments");
+        const data = await res.json();
+        setComments(data);
+      } catch (err) {
+        console.error("Error fetching comments:", err);
+      }
+    };
+    fetchComments();
+  }, [showComments, id, API_URL]);
+
+  // Click-away listener for comments panel
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (panelRef.current && !panelRef.current.contains(event.target)) {
         setShowComments(false);
       }
-      
     };
     if (showComments) {
       document.addEventListener("mousedown", handleClickOutside);
@@ -45,26 +61,31 @@ const PostDetail = () => {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
+
     try {
       const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("You must be logged in to comment");
+        return;
+      }
+
       const res = await fetch(`${API_URL}/posts/${id}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: newComment })
+        body: JSON.stringify({ content: newComment }),
       });
+
       if (!res.ok) throw new Error("Failed to add comment");
-      const updatedComment = await res.json();
-      setPost(prev => ({
-        ...prev,
-        comments: [...prev.comments, updatedComment]
-      }));
+
+      const savedComment = await res.json();
+      setComments((prev) => [...prev, savedComment]);
       setNewComment("");
-    } catch (err) {
-      console.error(err);
-      alert("Error adding comment: " + err.message);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      alert("Error adding comment: " + error.message);
     }
   };
 
@@ -101,7 +122,7 @@ const PostDetail = () => {
           className="cursor-pointer hover:underline"
           onClick={() => setShowComments(true)}
         >
-          💬 {post.comments?.length || 0} Comments
+          💬 {comments.length || 0} Comments
         </span>
       </div>
 
@@ -124,16 +145,23 @@ const PostDetail = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-3 mb-4">
-            {post.comments.length === 0 ? (
-              <p className="text-gray-500 text-sm">No comments yet.</p>
-            ) : (
-              post.comments.map((comment, idx) => (
-                <div key={idx} className="border-b pb-2">
-                  <p className="text-sm font-medium">{comment.author?.username || comment.author?.email}</p>
-                  <p className="text-gray-600 text-sm">{comment.content}</p>
-                </div>
-              ))
-            )}
+            {comments.length === 0 ? (
+                <p className="text-gray-500 text-sm">No comments yet.</p>
+              ) : (
+                comments.map((comment, idx) => (
+                  <div key={idx} className="border-b pb-2 flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={comment.author?.profileImage || "/default-avatar.png"}
+                        alt={comment.author?.username || "Author"}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                      <p className="text-sm font-medium">{comment.author?.username || comment.author?.email}</p>
+                    </div>
+                    <p className="text-gray-600 text-sm ml-10">{comment.content}</p>
+                  </div>
+                ))
+              )}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -166,6 +194,12 @@ const PostDetail = () => {
 };
 
 export default PostDetail;
+
+
+
+
+
+
 
 
 
