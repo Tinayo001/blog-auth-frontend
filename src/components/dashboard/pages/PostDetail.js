@@ -112,6 +112,21 @@ const PostDetail = () => {
         {post.title}
       </h1>
 
+      {/* Post Image */}
+      {post.image && (
+        <div className="mb-4">
+          <img
+            src={`http://localhost:5000${post.image}`}
+            alt={post.title}
+            className="w-full max-w-lg h-auto object-contain rounded-lg"
+            onError={(e) => {
+              e.target.src = "/default-image.png"; // Fallback image
+              console.error("Failed to load image:", e.target.src);
+            }}
+          />
+        </div>
+      )}
+
       {/* Content */}
       <p className="text-gray-700 leading-relaxed">{post.content}</p>
 
@@ -194,6 +209,17 @@ const PostDetail = () => {
 };
 
 export default PostDetail;
+
+
+
+
+
+
+
+
+
+
+
 
 
 
