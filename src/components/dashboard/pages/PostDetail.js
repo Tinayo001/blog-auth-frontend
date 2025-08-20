@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
+import { FaComment } from "react-icons/fa";
+
+const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -8,15 +12,29 @@ const PostDetail = () => {
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState([]);
-  const panelRef = useRef(null); 
+  const [hasLiked, setHasLiked] = useState(false);
+  const [isTogglingLike, setIsTogglingLike] = useState(false);
+  const [showLikePopup, setShowLikePopup] = useState(null);
+  const panelRef = useRef(null);
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
-  // Fetch post data
+  useEffect(() => {
+    console.log("Post ID:", id);
+    if (!isValidObjectId(id)) {
+      console.error(`Invalid post ID: ${id}`);
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     const fetchPost = async () => {
+      if (!isValidObjectId(id)) return;
       try {
         const res = await fetch(`${API_URL}/posts/${id}`);
-        if (!res.ok) throw new Error("Failed to fetch post");
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Failed to fetch post");
+        }
         const data = await res.json();
         setPost(data);
       } catch (err) {
@@ -28,13 +46,15 @@ const PostDetail = () => {
     fetchPost();
   }, [id, API_URL]);
 
-  // Fetch comments when sidebar opens
   useEffect(() => {
     const fetchComments = async () => {
-      if (!showComments) return;
+      if (!showComments || !isValidObjectId(id)) return;
       try {
         const res = await fetch(`${API_URL}/posts/${id}/comments`);
-        if (!res.ok) throw new Error("Failed to fetch comments");
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Failed to fetch comments");
+        }
         const data = await res.json();
         setComments(data);
       } catch (err) {
@@ -44,7 +64,31 @@ const PostDetail = () => {
     fetchComments();
   }, [showComments, id, API_URL]);
 
-  // Click-away listener for comments panel
+  useEffect(() => {
+    const fetchLikeStatus = async () => {
+      if (!isValidObjectId(id)) return;
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          console.log("No token, skipping like status fetch");
+          return;
+        }
+        const res = await fetch(`${API_URL}/likes/${id}/user`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Failed to fetch like status");
+        }
+        const { hasLiked } = await res.json();
+        setHasLiked(hasLiked);
+      } catch (err) {
+        console.error("Error fetching like status:", err);
+      }
+    };
+    fetchLikeStatus();
+  }, [id, API_URL]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (panelRef.current && !panelRef.current.contains(event.target)) {
@@ -60,7 +104,10 @@ const PostDetail = () => {
   }, [showComments]);
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim()) {
+      alert("Comment cannot be empty");
+      return;
+    }
 
     try {
       const token = localStorage.getItem("accessToken");
@@ -78,14 +125,70 @@ const PostDetail = () => {
         body: JSON.stringify({ content: newComment }),
       });
 
-      if (!res.ok) throw new Error("Failed to add comment");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to add comment");
+      }
 
       const savedComment = await res.json();
       setComments((prev) => [...prev, savedComment]);
       setNewComment("");
     } catch (error) {
       console.error("Error adding comment:", error);
-      alert("Error adding comment: " + error.message);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (isTogglingLike) return;
+    console.log("Toggling like for postId:", id);
+    setIsTogglingLike(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("You must be logged in to like/unlike");
+        setIsTogglingLike(false);
+        return;
+      }
+
+      const newHasLiked = !hasLiked;
+      setHasLiked(newHasLiked);
+      setPost((prev) => ({
+        ...prev,
+        likesCount: Math.max(0, (prev?.likesCount || 0) + (newHasLiked ? 1 : -1)),
+      }));
+      setShowLikePopup(newHasLiked ? "+1" : "-1");
+      setTimeout(() => setShowLikePopup(null), 1000);
+
+      const url = `${API_URL}/likes/${id}`;
+      const options = {
+        method: newHasLiked ? "POST" : "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      if (newHasLiked) {
+        options.body = JSON.stringify({ postId: id });
+      }
+
+      const res = await fetch(url, options);
+
+      if (!res.ok) {
+        setHasLiked(!newHasLiked);
+        setPost((prev) => ({
+          ...prev,
+          likesCount: Math.max(0, (prev?.likesCount || 0) + (newHasLiked ? -1 : 1)),
+        }));
+        const errorData = await res.json();
+        throw new Error(errorData.error || `Failed to ${newHasLiked ? "like" : "unlike"} post`);
+      }
+    } catch (error) {
+      console.error(`Error ${hasLiked ? "unliking" : "liking"} post:`, error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsTogglingLike(false);
     }
   };
 
@@ -94,7 +197,6 @@ const PostDetail = () => {
 
   return (
     <div className="p-6 max-w-3xl mx-auto relative">
-      {/* Author Info */}
       <div className="flex items-center gap-3 mb-4">
         <img
           src={post.author?.profileImage || "/default-avatar.png"}
@@ -107,12 +209,10 @@ const PostDetail = () => {
         </div>
       </div>
 
-      {/* Title */}
       <h1 className="text-3xl font-bold mb-4" style={{ color: "rgba(0, 0, 0, 0.85)" }}>
         {post.title}
       </h1>
 
-      {/* Post Image */}
       {post.image && (
         <div className="mb-4">
           <img
@@ -120,28 +220,50 @@ const PostDetail = () => {
             alt={post.title}
             className="w-full max-w-lg h-auto object-contain rounded-lg"
             onError={(e) => {
-              e.target.src = "/default-image.png"; // Fallback image
+              e.target.src = "/default-image.png";
               console.error("Failed to load image:", e.target.src);
             }}
           />
         </div>
       )}
 
-      {/* Content */}
       <p className="text-gray-700 leading-relaxed">{post.content}</p>
 
-      {/* Likes and Comments */}
       <div className="flex items-center gap-6 mt-6 text-sm text-gray-500">
-        <span>❤️ {post.likes?.length || 0} Likes</span>
-        <span
-          className="cursor-pointer hover:underline"
+        <div className="relative">
+          <button
+            onClick={handleToggleLike}
+            disabled={isTogglingLike}
+            className={`flex items-center gap-1 text-lg ${
+              hasLiked
+                ? "text-gray-500 hover:text-gray-700"
+                : "text-gray-500 hover:text-gray-700 opacity-50"
+            } ${isTogglingLike ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {hasLiked ? <AiFillHeart /> : <AiOutlineHeart />}
+            <span>{post.likesCount || 0}</span>
+          </button>
+          {showLikePopup && (
+            <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-gray-500 text-sm animate-popup">
+              {showLikePopup}
+            </span>
+          )}
+        </div>
+        <button
           onClick={() => setShowComments(true)}
+          className="flex items-center gap-1 cursor-pointer hover:underline"
         >
-          💬 {comments.length || 0} Comments
-        </span>
+          <FaComment
+            className={`text-lg ${
+              comments.length > 0
+                ? "text-gray-500 hover:text-gray-700"
+                : "text-gray-500 hover:text-gray-700 opacity-50"
+            }`}
+          />
+          <span>{comments.length || 0}</span>
+        </button>
       </div>
 
-      {/* Comments Panel */}
       <div
         ref={panelRef}
         className={`fixed top-0 right-0 h-full w-80 bg-white shadow-lg transform transition-transform duration-300 ${
@@ -161,22 +283,22 @@ const PostDetail = () => {
 
           <div className="flex-1 overflow-y-auto space-y-3 mb-4">
             {comments.length === 0 ? (
-                <p className="text-gray-500 text-sm">No comments yet.</p>
-              ) : (
-                comments.map((comment, idx) => (
-                  <div key={idx} className="border-b pb-2 flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={comment.author?.profileImage || "/default-avatar.png"}
-                        alt={comment.author?.username || "Author"}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                      <p className="text-sm font-medium">{comment.author?.username || comment.author?.email}</p>
-                    </div>
-                    <p className="text-gray-600 text-sm ml-10">{comment.content}</p>
+              <p className="text-gray-500 text-sm">No comments yet.</p>
+            ) : (
+              comments.map((comment, idx) => (
+                <div key={idx} className="border-b pb-2 flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={comment.author?.profileImage || "/default-avatar.png"}
+                      alt={comment.author?.username || "Author"}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                    <p className="text-sm font-medium">{comment.author?.username || comment.author?.email}</p>
                   </div>
-                ))
-              )}
+                  <p className="text-gray-600 text-sm ml-10">{comment.content}</p>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -204,14 +326,23 @@ const PostDetail = () => {
           </div>
         </div>
       </div>
+
+      <style>
+        {`
+          .animate-popup {
+            animation: popup 1s ease-out forwards;
+          }
+          @keyframes popup {
+            0% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+          }
+        `}
+      </style>
     </div>
   );
 };
 
 export default PostDetail;
-
-
-
 
 
 
