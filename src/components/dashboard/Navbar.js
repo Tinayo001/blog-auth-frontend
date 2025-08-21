@@ -6,7 +6,7 @@ import UserDropdown from "./UserDropdown";
 const DashboardNavbar = () => {
   const navigate = useNavigate();
   return (
-    <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+    <nav className="bg-white px-4 py-3 flex items-center justify-between shadow-sm">
       {/* Logo */}
       <div
           className="text-black text-3xl"

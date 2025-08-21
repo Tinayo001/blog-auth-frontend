@@ -16,6 +16,7 @@ const PostDetail = () => {
   const [isTogglingLike, setIsTogglingLike] = useState(false);
   const [showLikePopup, setShowLikePopup] = useState(null);
   const panelRef = useRef(null);
+  const textareaRef = useRef(null);
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
   useEffect(() => {
@@ -142,7 +143,12 @@ const PostDetail = () => {
   const handleToggleLike = async () => {
     if (isTogglingLike) return;
     console.log("Toggling like for postId:", id);
+    if (!isValidObjectId(id)) {
+      alert("Invalid post ID");
+      return;
+    }
     setIsTogglingLike(true);
+    const newHasLiked = !hasLiked;
 
     try {
       const token = localStorage.getItem("accessToken");
@@ -152,7 +158,6 @@ const PostDetail = () => {
         return;
       }
 
-      const newHasLiked = !hasLiked;
       setHasLiked(newHasLiked);
       setPost((prev) => ({
         ...prev,
@@ -185,11 +190,33 @@ const PostDetail = () => {
         throw new Error(errorData.error || `Failed to ${newHasLiked ? "like" : "unlike"} post`);
       }
     } catch (error) {
-      console.error(`Error ${hasLiked ? "unliking" : "liking"} post:`, error);
+      console.error(`Error ${newHasLiked ? "liking" : "unliking"} post:`, error);
       alert(`Error: ${error.message}`);
     } finally {
       setIsTogglingLike(false);
     }
+  };
+
+  const handleBold = () => {
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = newComment.slice(start, end);
+    const before = newComment.slice(0, start);
+    const after = newComment.slice(end);
+    setNewComment(`${before}**${selectedText}**${after}`);
+    textarea.focus();
+  };
+
+  const handleItalic = () => {
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = newComment.slice(start, end);
+    const before = newComment.slice(0, start);
+    const after = newComment.slice(end);
+    setNewComment(`${before}_${selectedText}_${after}`);
+    textarea.focus();
   };
 
   if (loading) return <p className="p-6">Loading post...</p>;
@@ -272,7 +299,7 @@ const PostDetail = () => {
       >
         <div className="p-4 flex flex-col h-full">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold">Comments</h2>
+            <h2 className="text-lg font-bold">Comments({comments.length})</h2>
             <button
               onClick={() => setShowComments(false)}
               className="text-gray-500 hover:text-gray-700"
@@ -302,23 +329,42 @@ const PostDetail = () => {
           </div>
 
           <div className="flex flex-col gap-2">
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={handleBold}
+                className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300"
+              >
+                B
+              </button>
+              <button
+                onClick={handleItalic}
+                className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300"
+              >
+                I
+              </button>
+            </div>
             <textarea
+              ref={textareaRef}
               placeholder="Write a comment..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              className="w-full border rounded px-2 py-1 text-sm resize-none"
-              rows={3}
+              className="w-full border rounded px-3 py-2 text-sm bg-gray-100 resize-none"
+              rows={5}
             />
             <div className="flex gap-2">
               <button
                 onClick={handleAddComment}
-                className="bg-gray-500 text-white px-3 py-1 rounded-2xl hover:bg-gray-400"
+                className={`text-white px-3 py-1 rounded-2xl ${
+                  newComment.trim()
+                    ? "bg-zinc-950 hover:bg-zinc-800"
+                    : "bg-gray-500 hover:bg-gray-400"
+                }`}
               >
                 Respond
               </button>
               <button
                 onClick={() => setNewComment("")}
-                className="text-zinc-950 px-3 py-1"
+                className="text-zinc-950 px-3 py-1 rounded-2xl border border-gray-300 hover:bg-gray-100"
               >
                 Cancel
               </button>
