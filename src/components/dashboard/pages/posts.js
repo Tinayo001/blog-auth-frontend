@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { FaComment } from "react-icons/fa";
+import { HiMinusCircle } from "react-icons/hi"; // For Show Less
+import { BsBookmark, BsBookmarkFill, BsThreeDots } from "react-icons/bs"; // For Save Post and More Options
 
 const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
 
@@ -14,6 +16,9 @@ const Posts = () => {
   const [followingMap, setFollowingMap] = useState({});
   const [isTogglingFollowMap, setIsTogglingFollowMap] = useState({});
   const [likersMap, setLikersMap] = useState({});
+  const [savedPostsMap, setSavedPostsMap] = useState({});
+  const [showPopupMap, setShowPopupMap] = useState({}); // State for popup visibility
+  const threeDotsRefs = useRef({}); // Refs for three-dot buttons
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api/auth";
 
   useEffect(() => {
@@ -58,13 +63,20 @@ const Posts = () => {
               return { postId: post._id, hasLiked: false };
             }
           });
-          const likeStatuses = await Promise.all(likeStatusPromises);
-          const likeStatusMap = likeStatuses.reduce((acc, { postId, hasLiked }) => {
+          const likeStatusPromisesResult = await Promise.all(likeStatusPromises);
+          const likeStatusMap = likeStatusPromisesResult.reduce((acc, { postId, hasLiked }) => {
             acc[postId] = hasLiked;
             return acc;
           }, {});
           console.log("Updated hasLikedMap:", likeStatusMap);
           setHasLikedMap(likeStatusMap);
+
+          // Fetch saved post statuses (placeholder)
+          const savedStatusMap = postsData.reduce((acc, post) => {
+            acc[post._id] = false; // Default: not saved
+            return acc;
+          }, {});
+          setSavedPostsMap(savedStatusMap);
         }
       } catch (err) {
         console.error("Error fetching posts:", { message: err.message, stack: err.stack });
@@ -235,21 +247,27 @@ const Posts = () => {
   const handleToggleFollow = async (userId) => {
     if (isTogglingFollowMap[userId]) return;
     console.log("Toggling follow for userId:", userId);
-    if (!isValidObjectId(userId)) {
+
+    // Check for valid userId
+    if (!userId || typeof userId !== "string" || !isValidObjectId(userId)) {
+      console.error("Invalid or missing user ID:", userId);
       alert("Invalid user ID");
       return;
     }
+
     setIsTogglingFollowMap((prev) => ({ ...prev, [userId]: true }));
-    const newIsFollowing = !followingMap[userId];
+    const newIsFollowing = !followingMap[userId] ?? true; // Default to true if undefined
 
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
+        console.error("No access token found in localStorage");
         alert("You must be logged in to follow/unfollow");
         setIsTogglingFollowMap((prev) => ({ ...prev, [userId]: false }));
         return;
       }
 
+      // Optimistic update
       setFollowingMap((prev) => ({ ...prev, [userId]: newIsFollowing }));
 
       const url = `${API_URL}/follow/${userId}`;
@@ -263,16 +281,75 @@ const Posts = () => {
 
       const res = await fetch(url, options);
       if (!res.ok) {
+        let errorData;
+        try {
+          errorData = await res.json();
+        } catch (jsonError) {
+          console.error("Failed to parse error response:", jsonError);
+          errorData = { error: `HTTP error ${res.status}` };
+        }
         setFollowingMap((prev) => ({ ...prev, [userId]: !newIsFollowing }));
-        const errorData = await res.json();
-        throw new Error(errorData.error || `Failed to ${newIsFollowing ? "follow" : "unfollow"} user`);
+        throw new Error(errorData.error || `Failed to ${newIsFollowing ? "follow" : "unfollow"} user (Status: ${res.status})`);
       }
+
+      console.log(`Successfully ${newIsFollowing ? "followed" : "unfollowed"} user ${userId}`);
     } catch (error) {
-      console.error(`Error ${newIsFollowing ? "following" : "unfollowing"} user:`, { message: error.message, stack: error.stack });
+      console.error(`Error ${newIsFollowing ? "following" : "unfollowing"} user ${userId}:`, {
+        message: error.message,
+        stack: error.stack,
+      });
       alert(`Error: ${error.message}`);
     } finally {
       setIsTogglingFollowMap((prev) => ({ ...prev, [userId]: false }));
     }
+  };
+
+  const handleShowLess = (postId) => {
+    console.log(`Show less for post: ${postId}`);
+    // Placeholder for future backend integration
+    alert("Show less functionality not implemented yet.");
+    setShowPopupMap((prev) => ({ ...prev, [postId]: false }));
+  };
+
+  const handleSavePost = (postId) => {
+    console.log(`Toggling save for post: ${postId}`);
+    setSavedPostsMap((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+    alert(`Post ${savedPostsMap[postId] ? "unsaved" : "saved"}!`);
+  };
+
+  const handleTogglePopup = (postId) => {
+    console.log(`Toggling popup for post: ${postId}`);
+    setShowPopupMap((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
+
+  const handleFollowPublication = (postId) => {
+    console.log(`Follow publication for post: ${postId}`);
+    alert("Follow publication functionality not implemented yet.");
+    setShowPopupMap((prev) => ({ ...prev, [postId]: false }));
+  };
+
+  const handleMuteAuthor = (postId) => {
+    console.log(`Mute author for post: ${postId}`);
+    alert("Mute author functionality not implemented yet.");
+    setShowPopupMap((prev) => ({ ...prev, [postId]: false }));
+  };
+
+  const handleMutePublication = (postId) => {
+    console.log(`Mute publication for post: ${postId}`);
+    alert("Mute publication functionality not implemented yet.");
+    setShowPopupMap((prev) => ({ ...prev, [postId]: false }));
+  };
+
+  const handleReportStory = (postId) => {
+    console.log(`Report story for post: ${postId}`);
+    alert("Report story functionality not implemented yet.");
+    setShowPopupMap((prev) => ({ ...prev, [postId]: false }));
   };
 
   return (
@@ -308,66 +385,172 @@ const Posts = () => {
 
                     <p className="text-gray-600 mt-2">{post.content.substring(0, 150)}...</p>
 
-                    <div className="flex items-center gap-6 mt-4 text-sm text-gray-500">
-                      <div className="relative">
-                        <button
-                          onClick={() => handleToggleLike(post._id)}
-                          disabled={isTogglingLikeMap[post._id]}
-                          className={`flex items-center gap-1 text-lg ${
-                            hasLikedMap[post._id]
-                              ? "text-gray-500 hover:text-gray-700"
-                              : "text-gray-500 hover:text-gray-700 opacity-50"
-                          } ${isTogglingLikeMap[post._id] ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          {hasLikedMap[post._id] ? <AiFillHeart /> : <AiOutlineHeart />}
-                          <span
-                            className="cursor-pointer hover:underline"
-                            onClick={() => fetchUsersWhoLiked(post._id)}
+                    <div className="flex items-center justify-between gap-4 mt-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-6">
+                        <div className="relative">
+                          <button
+                            onClick={() => handleToggleLike(post._id)}
+                            disabled={isTogglingLikeMap[post._id]}
+                            className={`flex items-center gap-1 text-lg ${
+                              hasLikedMap[post._id]
+                                ? "text-gray-500 hover:text-gray-700"
+                                : "text-gray-500 hover:text-gray-700 opacity-50"
+                            } ${isTogglingLikeMap[post._id] ? "opacity-50 cursor-not-allowed" : ""}`}
                           >
-                            {post.likesCount || 0}
-                          </span>
-                        </button>
-                        {showLikePopupMap[post._id] && (
-                          <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-gray-500 text-sm animate-popup">
-                            {showLikePopupMap[post._id]}
-                          </span>
-                        )}
-                        {likersMap[post._id] && (
-                          <div className="absolute top-8 left-0 bg-white border border-gray-200 rounded shadow p-2 text-xs max-w-[200px] z-10">
-                            {likersMap[post._id].length > 0 ? (
-                              likersMap[post._id].map((user) => (
-                                <Link
-                                  key={user._id}
-                                  to={`/profile/${user._id}`}
-                                  className="flex items-center gap-2 hover:underline mb-1"
-                                >
-                                  <img
-                                    src={user.profileImage}
-                                    alt={user.username}
-                                    className="w-6 h-6 rounded-full object-cover"
-                                  />
-                                  <span>{user.username}</span>
-                                </Link>
-                              ))
-                            ) : (
-                              <span>No likes yet</span>
-                            )}
-                          </div>
-                        )}
+                            {hasLikedMap[post._id] ? <AiFillHeart /> : <AiOutlineHeart />}
+                            <span
+                              className="cursor-pointer hover:underline"
+                              onClick={() => fetchUsersWhoLiked(post._id)}
+                            >
+                              {post.likesCount || 0}
+                            </span>
+                          </button>
+                          {showLikePopupMap[post._id] && (
+                            <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-gray-500 text-sm animate-pulse transition-all duration-1000 animate-bounce">
+                              {showLikePopupMap[post._id]}
+                            </span>
+                          )}
+                          {likersMap[post._id] && (
+                            <div className="absolute top-8 left-0 bg-white border border-gray-200 rounded shadow p-2 text-xs max-w-[200px] z-10">
+                              {likersMap[post._id].length > 0 ? (
+                                likersMap[post._id].map((user) => (
+                                  <Link
+                                    key={user._id}
+                                    to={`/profile/${user._id}`}
+                                    className="flex items-center gap-2 hover:underline mb-1"
+                                  >
+                                    <img
+                                      src={user.profileImage}
+                                      alt={user.username}
+                                      className="w-6 h-6 rounded-full object-cover"
+                                    />
+                                    <span>{user.username}</span>
+                                  </Link>
+                                ))
+                              ) : (
+                                <span>No likes yet</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          className="flex items-center gap-1 cursor-pointer hover:underline"
+                          onClick={() => console.log("Comments clicked")}
+                        >
+                          <FaComment
+                            className={`text-lg ${
+                              (post.comments?.length || 0) > 0
+                                ? "text-gray-500 hover:text-gray-700"
+                                : "text-gray-500 hover:text-gray-700 opacity-50"
+                            }`}
+                          />
+                          {post.comments?.length || 0}
+                        </span>
                       </div>
-                      <span
-                        className="flex items-center gap-1 cursor-pointer hover:underline"
-                        onClick={() => console.log("Comments clicked")}
-                      >
-                        <FaComment
-                          className={`text-lg ${
-                            (post.comments?.length || 0) > 0
+                      <div className="flex items-center gap-4 text-lg text-gray-500">
+                        <button
+                          onClick={() => handleShowLess(post._id)}
+                          className="bg-transparent hover:text-gray-700 transition-colors duration-200"
+                          title="Show less of this post"
+                        >
+                          <HiMinusCircle />
+                        </button>
+                        <button
+                          onClick={() => handleSavePost(post._id)}
+                          className={`bg-transparent transition-colors duration-200 ${
+                            savedPostsMap[post._id]
                               ? "text-gray-500 hover:text-gray-700"
                               : "text-gray-500 hover:text-gray-700 opacity-50"
                           }`}
-                        />
-                        {post.comments?.length || 0}
-                      </span>
+                          title={savedPostsMap[post._id] ? "Unsave post" : "Save post"}
+                        >
+                          {savedPostsMap[post._id] ? <BsBookmarkFill /> : <BsBookmark />}
+                        </button>
+                        <div className="relative">
+                          <button
+                            ref={(el) => (threeDotsRefs.current[post._id] = el)}
+                            onClick={() => handleTogglePopup(post._id)}
+                            className="bg-transparent text-gray-500 hover:text-zinc-950 transition-colors duration-200"
+                            title="More options"
+                          >
+                            <BsThreeDots />
+                          </button>
+                          {showPopupMap[post._id] && (
+                            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 text-sm text-gray-500 w-48 z-10 animate-in slide-in-from-bottom-2 fade-in-0 duration-200">
+                              {/* Arrow pointing down */}
+                              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white"></div>
+                              <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[9px] border-r-[9px] border-t-[9px] border-l-transparent border-r-transparent border-t-gray-200"></div>
+                              
+                              {/* Show Less Section */}
+                              <div className="px-2">
+                                <button
+                                  onClick={() => handleShowLess(post._id)}
+                                  className="flex items-center gap-2 w-full text-left hover:text-zinc-950 p-1 rounded transition-colors duration-150"
+                                >
+                                  <HiMinusCircle className="text-lg" />
+                                  Show less
+                                </button>
+                              </div>
+
+                              {/* Separator */}
+                              <div className="border-t border-gray-200 my-2"></div>
+
+                              {/* Follow Section */}
+                              <div className="px-2">
+                                {post.author?._id && (
+                                  <button
+                                    onClick={() => handleToggleFollow(post.author._id)}
+                                    disabled={isTogglingFollowMap[post.author._id]}
+                                    className={`flex items-center gap-2 w-full text-left hover:text-zinc-950 p-1 rounded transition-colors duration-150 ${
+                                      isTogglingFollowMap[post.author._id] ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                  >
+                                    {followingMap[post.author._id] ? "Unfollow Author" : "Follow Author"}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleFollowPublication(post._id)}
+                                  className="flex items-center gap-2 w-full text-left hover:text-zinc-950 p-1 rounded transition-colors duration-150"
+                                >
+                                  Follow Publication
+                                </button>
+                              </div>
+
+                              {/* Separator */}
+                              <div className="border-t border-gray-200 my-2"></div>
+
+                              {/* Mute Section */}
+                              <div className="px-2">
+                                <button
+                                  onClick={() => handleMuteAuthor(post._id)}
+                                  className="flex items-center gap-2 w-full text-left hover:text-zinc-950 p-1 rounded transition-colors duration-150"
+                                >
+                                  Mute Author
+                                </button>
+                                <button
+                                  onClick={() => handleMutePublication(post._id)}
+                                  className="flex items-center gap-2 w-full text-left hover:text-zinc-950 p-1 rounded transition-colors duration-150"
+                                >
+                                  Mute Publication
+                                </button>
+                              </div>
+
+                              {/* Separator */}
+                              <div className="border-t border-gray-200 my-2"></div>
+
+                              {/* Report Section */}
+                              <div className="px-2">
+                                <button
+                                  onClick={() => handleReportStory(post._id)}
+                                  className="flex items-center text-red-600 gap-2 w-full text-left hover:bg-gray-100 p-1 rounded transition-colors duration-150"
+                                >
+                                  Report Story...
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -404,14 +587,14 @@ const Posts = () => {
               <li><Link to="/topics/3" className="hover:underline">Post Title 3</Link></li>
             </ul>
           </div>
-          <div className="mb-6 who-to-follow">
+          <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4">Who to Follow</h3>
             {users.length === 0 ? (
               <p className="text-gray-500">No users to follow.</p>
             ) : (
               <>
                 <ul className="space-y-4">
-                  {users.slice(0, 4).map((user) => {
+                  {users.slice(0, 3).map((user) => {
                     console.log("Rendering user:", {
                       id: user._id,
                       username: user.username,
@@ -419,23 +602,23 @@ const Posts = () => {
                       bio: user.bio,
                     });
                     return (
-                      <li key={user._id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <li key={user._id} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           <img
                             src={user.profileImage || "/default-avatar.png"}
                             alt={user.username || "User"}
                             className="w-8 h-8 rounded-full object-cover"
                           />
-                          <div className="flex flex-col">
+                          <div className="flex flex-col min-w-0">
                             <Link
                               to={`/profile/${user._id}`}
-                              className="text-sm !text-zinc-950 !font-bold hover:underline"
+                              className="text-sm text-zinc-950 font-bold truncate hover:underline transition-colors duration-200"
                             >
                               {user.username || user.email || "Unknown User"}
                             </Link>
                             {user.bio && (
-                              <span className="text-xs text-gray-500 max-w-[150px] truncate">
-                                {user.bio.length > 50 ? `${user.bio.substring(0, 50)}...` : user.bio}
+                              <span className="text-xs text-gray-500 max-w-[140px] line-clamp-2">
+                                {user.bio}
                               </span>
                             )}
                           </div>
@@ -443,10 +626,10 @@ const Posts = () => {
                         <button
                           onClick={() => handleToggleFollow(user._id)}
                           disabled={isTogglingFollowMap[user._id]}
-                          className={`ml-8 rounded-full text-base font-medium transition-colors duration-200 bg-transparent border border-gray-500 ${
+                          className={`rounded-full text-sm font-medium transition-colors duration-200 bg-transparent border border-gray-500 px-3 py-1 ${
                             followingMap[user._id]
-                              ? "px-6 py-1 text-gray-500 hover:text-gray-600 hover:border-gray-600"
-                              : "px-4 py-1 text-gray-700 hover:text-gray-800 hover:border-gray-700"
+                              ? "text-gray-500 hover:text-gray-600 hover:border-gray-600"
+                              : "text-gray-700 hover:text-gray-800 hover:border-gray-700"
                           } ${isTogglingFollowMap[user._id] ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           {followingMap[user._id] ? "Following" : "Follow"}
@@ -457,7 +640,7 @@ const Posts = () => {
                 </ul>
                 <Link
                   to="/suggestions"
-                  className="block mt-4 text-sm text-purple-900 hover:underline"
+                  className="block mt-4 text-sm text-purple-900 hover:underline transition-colors duration-200"
                 >
                   See more suggestions
                 </Link>
@@ -474,25 +657,8 @@ const Posts = () => {
           </div>
         </div>
       </div>
-
-      <style>
-        {`
-          .animate-popup {
-            animation: popup 1s ease-out forwards;
-          }
-          @keyframes popup {
-            0% { opacity: 1; transform: translate(-50%, 0); }
-            100% { opacity: 0; transform: translate(-50%, -20px); }
-          }
-          .who-to-follow a {
-            color: #09090b !important; /* zinc-950 */
-            font-weight: 700 !important; /* bold */
-          }
-        `}
-      </style>
     </div>
   );
 };
 
 export default Posts;
-
